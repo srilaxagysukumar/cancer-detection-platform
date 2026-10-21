@@ -1,0 +1,12 @@
+# Every setting that changes the model lives here, so that DVC can notice
+# when you change one and re-run only the stages that depend on it.
+data:
+  test_size: 0.2        # 20% of patients are held back and never used for training
+  random_state: 42      # fixed seed -> the same split every time
+
+train:
+  random_state: 42      # fixed seed -> the same model every time
+  cv_folds: 5           # cross-validation folds used for tuning
+  n_iter: 25            # how many hyper-parameter combinations to try
+  target_recall: 0.98   # the decision threshold is chosen to reach at least this recall
+  background_size: 50   # patients kept as the reference set for SHAP explanations

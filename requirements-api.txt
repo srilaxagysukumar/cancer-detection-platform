@@ -1,0 +1,11 @@
+# Packages the prediction API (and the training pipeline) need.
+fastapi==0.156.8
+uvicorn==0.54.0
+pydantic==2.14.1
+scikit-learn==1.9.1
+pandas==3.0.6
+numpy==2.5.4
+scipy==1.18.1
+joblib==1.6.0
+PyYAML==6.0.3
+shap==0.54.1

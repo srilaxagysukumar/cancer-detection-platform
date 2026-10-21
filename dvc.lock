@@ -1,0 +1,79 @@
+schema: '2.0'
+stages:
+  ingest:
+    cmd: python -m src.ingest
+    deps:
+    - path: src/ingest.py
+      hash: md5
+      md5: 76915d778161313058417bd22da1e457
+      size: 1172
+    outs:
+    - path: data/raw/breast_cancer.csv
+      hash: md5
+      md5: ab761d6a12b5a92820951fdf2bd9a24c
+      size: 121388
+  preprocess:
+    cmd: python -m src.preprocess
+    deps:
+    - path: data/raw/breast_cancer.csv
+      hash: md5
+      md5: ab761d6a12b5a92820951fdf2bd9a24c
+      size: 121388
+    - path: src/preprocess.py
+      hash: md5
+      md5: a37ebcb05873c438c8934e3a273a4e03
+      size: 1999
+    params:
+      params.yaml:
+        data:
+          test_size: 0.2
+          random_state: 42
+    outs:
+    - path: data/processed/test.csv
+      hash: md5
+      md5: 292d0cd6fda83d01849b324aace75b01
+      size: 24714
+    - path: data/processed/train.csv
+      hash: md5
+      md5: 857b185b272be6710bbebb43c22f3fb4
+      size: 97169
+  train:
+    cmd: python -m src.train
+    deps:
+    - path: data/processed/test.csv
+      hash: md5
+      md5: 292d0cd6fda83d01849b324aace75b01
+      size: 24714
+    - path: data/processed/train.csv
+      hash: md5
+      md5: 857b185b272be6710bbebb43c22f3fb4
+      size: 97169
+    - path: src/train.py
+      hash: md5
+      md5: 4a8c1fdaa0fc94832d79335fe28d824f
+      size: 9862
+    params:
+      params.yaml:
+        train:
+          random_state: 42
+          cv_folds: 5
+          n_iter: 25
+          target_recall: 0.98
+          background_size: 50
+    outs:
+    - path: metrics/metrics.json
+      hash: md5
+      md5: 052f6e49883d4553abd5b3773a80a981
+      size: 923
+    - path: models/background.csv
+      hash: md5
+      md5: 6e6f38a96e34b0f8558d7dfe4de6bb10
+      size: 11024
+    - path: models/model.joblib
+      hash: md5
+      md5: c694b3024ca9e44e1005fe79107f02b1
+      size: 475016
+    - path: models/model_card.json
+      hash: md5
+      md5: 09fd392c2f1a1db418872c039e037870
+      size: 8931

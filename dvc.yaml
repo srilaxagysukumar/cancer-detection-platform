@@ -1,0 +1,36 @@
+# The pipeline: three stages that DVC runs in order, skipping any stage whose
+# inputs (code, data, parameters) have not changed since the last run.
+stages:
+  ingest:
+    cmd: python -m src.ingest
+    deps:
+      - src/ingest.py
+    outs:
+      - data/raw/breast_cancer.csv
+
+  preprocess:
+    cmd: python -m src.preprocess
+    deps:
+      - src/preprocess.py
+      - data/raw/breast_cancer.csv
+    params:
+      - data
+    outs:
+      - data/processed/train.csv
+      - data/processed/test.csv
+
+  train:
+    cmd: python -m src.train
+    deps:
+      - src/train.py
+      - data/processed/train.csv
+      - data/processed/test.csv
+    params:
+      - train
+    outs:
+      - models/model.joblib
+      - models/model_card.json
+      - models/background.csv
+    metrics:
+      - metrics/metrics.json:
+          cache: false

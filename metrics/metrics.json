@@ -1,0 +1,35 @@
+{
+  "positive_class": "malignant",
+  "decision_threshold": 0.23,
+  "target_recall": 0.98,
+  "target_reached_in_cv": true,
+  "cv_recall_at_threshold": 0.9823529411764705,
+  "cv_precision_at_threshold": 0.9027027027027027,
+  "n_train": 455,
+  "n_test": 114,
+  "n_malignant_test": 42,
+  "test": {
+    "recall": 0.9761904761904762,
+    "precision": 0.9761904761904762,
+    "specificity": 0.9861111111111112,
+    "accuracy": 0.9824561403508771,
+    "f1": 0.9761904761904762,
+    "roc_auc": 0.998015873015873,
+    "true_positives": 41,
+    "false_negatives": 1,
+    "false_positives": 1,
+    "true_negatives": 71
+  },
+  "test_at_default_threshold_0.5": {
+    "recall": 0.9047619047619048,
+    "precision": 1.0,
+    "specificity": 1.0,
+    "accuracy": 0.9649122807017544,
+    "f1": 0.95,
+    "roc_auc": 0.998015873015873,
+    "true_positives": 38,
+    "false_negatives": 4,
+    "false_positives": 0,
+    "true_negatives": 72
+  }
+}

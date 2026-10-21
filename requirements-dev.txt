@@ -1,0 +1,7 @@
+# Everything you need on your own computer: the API, the dashboard,
+# the DVC pipeline tool, and the test tools.
+-r requirements-api.txt
+-r requirements-ui.txt
+dvc==3.67.1
+pytest==9.1.1
+httpx==0.28.1
