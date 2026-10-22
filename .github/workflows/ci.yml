@@ -1,0 +1,28 @@
+# Runs automatically on GitHub every time you push: rebuilds the data and model with
+# the DVC pipeline, then runs the automated tests. A green tick on your repository
+# tells recruiters the project builds and works from a clean checkout.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+
+      - name: Rebuild data and model with DVC
+        run: dvc repro
+
+      - name: Run tests
+        run: pytest -q
