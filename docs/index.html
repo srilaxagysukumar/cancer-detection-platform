@@ -1,0 +1,362 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Breast Cancer Diagnostic Platform</title>
+<meta name="description" content="Interactive breast mass classifier (malignant vs benign) with SHAP explanations. Runs entirely in your browser. Educational demonstration only.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%94%AC%3C/text%3E%3C/svg%3E">
+<style>
+  :root {
+    --bg: #f6f7f9; --card: #ffffff; --text: #1d2330; --muted: #5d6677; --line: #dfe3ea;
+    --accent: #1f5fbf; --accent-soft: #e8f0fc;
+    --bad: #b3261e; --bad-soft: #fdecea; --good: #1b7a45; --good-soft: #e7f5ec;
+    --warn: #8a5a00; --warn-soft: #fff4d6; --bar-pos: #c0392b; --bar-neg: #2471a3;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #12151b; --card: #1b2029; --text: #e8ebf1; --muted: #98a2b3; --line: #2c3340;
+      --accent: #6ea2f0; --accent-soft: #1f2c44;
+      --bad: #ff8a80; --bad-soft: #3a1e1c; --good: #6fd197; --good-soft: #17301f;
+      --warn: #f2c66d; --warn-soft: #382c10; --bar-pos: #e5685b; --bar-neg: #5aa3d6;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font: 16px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 24px 16px 56px; }
+  h1 { font-size: 1.7rem; margin: 0 0 12px; }
+  h2 { font-size: 1.15rem; margin: 0 0 8px; }
+  h3 { font-size: 1rem; margin: 0 0 6px; }
+  p { margin: 0 0 8px; }
+  .muted { color: var(--muted); font-size: .9rem; }
+  .banner { background: var(--warn-soft); color: var(--warn); border-radius: 10px; padding: 12px 14px; margin-bottom: 18px; font-size: .95rem; }
+  .layout { display: grid; grid-template-columns: 300px 1fr; gap: 20px; align-items: start; }
+  @media (max-width: 860px) { .layout { grid-template-columns: 1fr; } }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px; }
+  .card + .card { margin-top: 16px; }
+  label { display: block; font-weight: 600; font-size: .9rem; margin-bottom: 4px; }
+  select, input[type=number] { width: 100%; padding: 8px 10px; font: inherit; color: var(--text); background: var(--bg);
+         border: 1px solid var(--line); border-radius: 8px; }
+  select:focus, input:focus, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .stat { font-size: 1.9rem; font-weight: 700; line-height: 1.1; }
+  .tabs { display: flex; gap: 6px; margin: 10px 0 14px; flex-wrap: wrap; }
+  .tab { border: 1px solid var(--line); background: var(--bg); color: var(--text); border-radius: 999px; padding: 6px 14px;
+         font: inherit; font-size: .9rem; cursor: pointer; }
+  .tab[aria-selected=true] { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+  .field label { font-weight: 500; }
+  .field .tip { color: var(--muted); font-size: .75rem; line-height: 1.3; margin-top: 3px; }
+  .field.bad input { border-color: var(--bad); }
+  .verdict { border-radius: 10px; padding: 12px 14px; font-weight: 700; font-size: 1.35rem; margin-bottom: 12px; }
+  .verdict.malignant { background: var(--bad-soft); color: var(--bad); }
+  .verdict.benign { background: var(--good-soft); color: var(--good); }
+  .meter { position: relative; height: 12px; background: var(--line); border-radius: 6px; margin: 10px 0 6px; }
+  .meter .fill { height: 100%; border-radius: 6px; background: var(--accent); }
+  .meter .mark { position: absolute; top: -4px; width: 2px; height: 20px; background: var(--text); }
+  .result { display: grid; grid-template-columns: 1fr 2fr; gap: 24px; }
+  @media (max-width: 860px) { .result { grid-template-columns: 1fr; } }
+  .warn { background: var(--warn-soft); color: var(--warn); border-radius: 8px; padding: 8px 10px; font-size: .85rem; margin-top: 8px; }
+  .err { background: var(--bad-soft); color: var(--bad); border-radius: 8px; padding: 10px 12px; font-size: .9rem; }
+  .shap-row { display: grid; grid-template-columns: minmax(130px, 38%) 1fr 56px; gap: 8px; align-items: center; font-size: .85rem; margin: 3px 0; }
+  .shap-row .lab { text-align: right; overflow-wrap: anywhere; }
+  .shap-track { position: relative; height: 18px; }
+  .shap-track::before { content: ""; position: absolute; left: 50%; top: 0; bottom: 0; width: 1px; background: var(--muted); }
+  .shap-bar { position: absolute; top: 2px; height: 14px; border-radius: 3px; }
+  .shap-bar.pos { background: var(--bar-pos); left: 50%; }
+  .shap-bar.neg { background: var(--bar-neg); right: 50%; }
+  .shap-row .num { font-variant-numeric: tabular-nums; color: var(--muted); }
+  .axis { text-align: center; font-size: .78rem; color: var(--muted); margin-top: 4px; }
+  details { margin-top: 12px; }
+  summary { cursor: pointer; font-weight: 600; font-size: .9rem; }
+  table { border-collapse: collapse; width: 100%; font-size: .85rem; margin-top: 8px; }
+  th, td { text-align: left; padding: 5px 8px; border-bottom: 1px solid var(--line); }
+  .busy { opacity: .55; transition: opacity .15s; }
+  footer { margin-top: 28px; font-size: .85rem; color: var(--muted); }
+  footer a { color: var(--accent); }
+  a { color: var(--accent); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🔬 Breast Cancer Diagnostic Platform</h1>
+  <div class="banner"><strong>Educational demonstration only.</strong> Built on a public research dataset (Wisconsin Diagnostic
+    Breast Cancer). It is not a medical device and must never be used to make health decisions.</div>
+
+  <div id="loading" class="card">Loading the model…</div>
+  <div id="fatal" class="err" hidden></div>
+
+  <div id="app" class="layout" hidden>
+    <aside>
+      <div class="card">
+        <h2>1. Choose a patient</h2>
+        <label for="example">Load an example</label>
+        <select id="example"></select>
+        <p class="muted" id="exampleNote" style="margin-top:8px"></p>
+        <p class="muted">The examples are real patients from a test set the model never saw during training. Then change any measurement on the right. The result updates by itself.</p>
+      </div>
+      <div class="card">
+        <h2>About the model</h2>
+        <p id="modelName" class="muted"></p>
+        <div class="muted">Recall on unseen patients</div>
+        <div class="stat" id="mRecall"></div>
+        <p class="muted" id="mDetail" style="margin-top:8px"></p>
+        <p class="muted" id="mMore"></p>
+        <p class="muted" id="mThreshold"></p>
+      </div>
+    </aside>
+
+    <main>
+      <div class="card">
+        <h2>Nucleus measurements</h2>
+        <p class="muted">Hover over a box (or read the grey text) for a plain-English definition. All 30 values are used by the model.</p>
+        <div class="tabs" role="tablist" id="tabs"></div>
+        <p class="muted" id="groupNote"></p>
+        <div class="grid" id="fields"></div>
+      </div>
+
+      <div class="card" id="resultCard">
+        <h2>Result</h2>
+        <div class="result">
+          <div>
+            <div class="verdict" id="verdict"></div>
+            <div class="muted">Probability of malignancy</div>
+            <div class="stat" id="prob"></div>
+            <div class="meter"><div class="fill" id="fill"></div><div class="mark" id="mark"></div></div>
+            <p class="muted" id="threshNote"></p>
+            <div id="warnings"></div>
+          </div>
+          <div>
+            <h3>Why did the model say this? (SHAP feature contributions)</h3>
+            <div id="shap"></div>
+            <div class="axis">Effect on malignancy probability (percentage points)</div>
+            <p class="muted" id="shapNote" style="margin-top:8px"></p>
+            <details><summary>See the numbers</summary><div id="shapTable"></div></details>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <footer>
+    <p><strong>How this works:</strong> the trained model (a soft-voting ensemble of logistic regression, random forest and gradient
+      boosting) was exported from Python to <code>model.json</code>, and <code>engine.js</code> runs the same arithmetic in your browser.
+      Nothing you type is sent anywhere, and there is no server to wake up. Explanations use the SHAP permutation method.</p>
+    <p>The full project (reproducible DVC pipeline, FastAPI backend, Streamlit dashboard, Docker, tests) is in the
+      <a id="repo" href="#" target="_blank" rel="noopener">GitHub repository</a>.</p>
+  </footer>
+</div>
+
+<script src="engine.js"></script>
+<script>
+(function () {
+  "use strict";
+  const MEASUREMENTS = {
+    radius: "Mean distance from the centre of the nucleus to points on its edge.",
+    texture: "Variation in grey-scale values across the nucleus image.",
+    perimeter: "Length of the nucleus outline.",
+    area: "Area of the nucleus.",
+    smoothness: "Local variation in radius lengths.",
+    compactness: "Perimeter squared divided by area, minus 1.",
+    concavity: "Severity of concave portions of the outline.",
+    concave_points: "Number of concave portions of the outline.",
+    symmetry: "How symmetrical the nucleus is.",
+    fractal_dimension: "'Coastline approximation': how irregular the outline is."
+  };
+  const GROUPS = {
+    mean: ["Mean values", "Average over all cells in the sample."],
+    error: ["Standard error", "How much each measurement varied between cells."],
+    worst: ["Worst values", "Mean of the three largest values in the sample."]
+  };
+  const AVERAGE = "Average patient (median values)";
+  const PERMUTATIONS = 30;
+
+  const $ = (id) => document.getElementById(id);
+  const pct = (v, d = 1) => (v * 100).toFixed(d) + "%";
+  const groupOf = (f) => (f.startsWith("mean_") ? "mean" : f.startsWith("worst_") ? "worst" : "error");
+  const baseOf = (f) => (f.startsWith("mean_") ? f.slice(5) : f.startsWith("worst_") ? f.slice(6) : f.slice(0, -6));
+  const pretty = (f) => { const s = f.replace(/_/g, " "); return s.charAt(0).toUpperCase() + s.slice(1); };
+  const g4 = (v) => String(+Number(v).toPrecision(4));
+
+  let model, values = {}, activeTab = "mean", timer = null, runId = 0;
+
+  // The "GitHub repository" link works out its own address when hosted on GitHub Pages.
+  (function setRepoLink() {
+    const m = location.hostname.match(/^([^.]+)\.github\.io$/);
+    const repo = location.pathname.split("/").filter(Boolean)[0];
+    if (m && repo) $("repo").href = `https://github.com/${m[1]}/${repo}`;
+    else $("repo").removeAttribute("href");
+  })();
+
+  function fail(message) {
+    $("loading").hidden = true;
+    $("fatal").hidden = false;
+    $("fatal").textContent = message;
+  }
+
+  fetch("model.json")
+    .then((r) => { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
+    .then(init)
+    .catch((e) => fail(
+      "Could not load model.json (" + e.message + "). If you opened this file straight from your computer, " +
+      "browsers block that. Run  python3 -m http.server --directory docs 8000  and open http://localhost:8000 instead."
+    ));
+
+  function init(m) {
+    model = m;
+    const names = model.feature_names;
+
+    // example menu
+    const select = $("example");
+    [AVERAGE].concat(model.examples.map((e) => e.title)).forEach((t) => {
+      const o = document.createElement("option"); o.textContent = t; select.appendChild(o);
+    });
+    select.addEventListener("change", () => { applyExample(select.value); });
+
+    // about the model
+    const mt = model.metrics, t = mt.test;
+    $("modelName").textContent = model.model;
+    $("mRecall").textContent = pct(t.recall);
+    $("mDetail").textContent = `Test set: ${mt.n_test} patients, ${mt.n_malignant_test} malignant. Missed malignant cases: ` +
+      `${t.false_negatives}. Cross-validated recall: ${pct(mt.cv_recall_at_threshold)}.`;
+    $("mMore").textContent = `Precision ${pct(t.precision)} · Accuracy ${pct(t.accuracy)} · ROC-AUC ${t.roc_auc.toFixed(3)}`;
+    $("mThreshold").textContent = `Decision threshold ${mt.decision_threshold.toFixed(2)}`;
+
+    // tabs
+    Object.keys(GROUPS).forEach((g) => {
+      const b = document.createElement("button");
+      b.className = "tab"; b.type = "button"; b.dataset.group = g; b.textContent = GROUPS[g][0];
+      b.setAttribute("role", "tab");
+      b.addEventListener("click", () => { activeTab = g; renderFields(); });
+      $("tabs").appendChild(b);
+    });
+
+    names.forEach((n) => { values[n] = model.feature_stats[n].median; });
+    renderFields();
+    $("loading").hidden = true;
+    $("app").hidden = false;
+    applyExample(AVERAGE);
+  }
+
+  function describeExample(title) {
+    if (title === AVERAGE) return "Every measurement set to the typical (median) value from the training data.";
+    const e = model.examples.find((x) => x.title === title);
+    return e.description || "";
+  }
+
+  function applyExample(title) {
+    model.feature_names.forEach((n) => {
+      values[n] = title === AVERAGE
+        ? model.feature_stats[n].median
+        : model.examples.find((e) => e.title === title).features[n];
+    });
+    $("exampleNote").textContent = describeExample(title);
+    renderFields();
+    recompute();
+  }
+
+  function renderFields() {
+    document.querySelectorAll(".tab").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.group === activeTab)));
+    $("groupNote").textContent = GROUPS[activeTab][1];
+    const box = $("fields");
+    box.textContent = "";
+    model.feature_names.filter((n) => groupOf(n) === activeTab).forEach((n) => {
+      const s = model.feature_stats[n];
+      const wrap = document.createElement("div"); wrap.className = "field";
+      const id = "in_" + n;
+      const label = document.createElement("label"); label.htmlFor = id; label.textContent = pretty(baseOf(n));
+      const input = document.createElement("input");
+      input.type = "number"; input.id = id; input.min = "0"; input.step = "any"; input.value = g4(values[n]);
+      input.title = MEASUREMENTS[baseOf(n)];
+      input.addEventListener("input", () => {
+        const v = parseFloat(input.value);
+        if (isFinite(v) && v >= 0) { values[n] = v; wrap.classList.remove("bad"); }
+        else { values[n] = NaN; wrap.classList.add("bad"); }
+        recompute();
+      });
+      const tip = document.createElement("div"); tip.className = "tip";
+      tip.textContent = `${MEASUREMENTS[baseOf(n)]} Typical range: ${g4(s.min)} to ${g4(s.max)}.`;
+      wrap.append(label, input, tip);
+      box.appendChild(wrap);
+    });
+  }
+
+  // Quick answer immediately; the slower SHAP explanation follows once typing pauses.
+  function recompute() {
+    clearTimeout(timer);
+    const invalid = model.feature_names.filter((n) => !isFinite(values[n]) || values[n] < 0);
+    if (invalid.length) {
+      $("resultCard").classList.add("busy");
+      $("warnings").innerHTML = "";
+      const d = document.createElement("div"); d.className = "err";
+      d.textContent = "Every measurement must be a number that is zero or more. Fix the highlighted box to see a result.";
+      $("warnings").appendChild(d);
+      return;
+    }
+    const my = ++runId;
+    const quick = Engine.diagnose(model, values, { explain: false });
+    showSummary(quick);
+    $("resultCard").classList.add("busy");
+    timer = setTimeout(() => {
+      const full = Engine.diagnose(model, values, { permutations: PERMUTATIONS });
+      if (my !== runId) return;
+      showSummary(full);
+      showShap(full);
+      $("resultCard").classList.remove("busy");
+    }, 250);
+  }
+
+  function showSummary(r) {
+    const v = $("verdict");
+    v.className = "verdict " + r.prediction.toLowerCase();
+    v.textContent = (r.prediction === "Malignant" ? "🚨 " : "✅ ") + r.prediction;
+    $("prob").textContent = pct(r.probability);
+    $("fill").style.width = Math.min(100, Math.max(0, r.probability * 100)) + "%";
+    $("mark").style.left = (model.threshold * 100) + "%";
+    $("threshNote").textContent =
+      `The model flags a case as malignant when this probability reaches ${Math.round(model.threshold * 100)}% (the line on the bar). ` +
+      "The threshold is set low on purpose, so almost no malignant case is missed (a false negative is the costliest mistake).";
+    const w = $("warnings"); w.textContent = "";
+    r.warnings.forEach((text) => { const d = document.createElement("div"); d.className = "warn"; d.textContent = text; w.appendChild(d); });
+  }
+
+  function showShap(r) {
+    const top = r.contributions.slice(0, 10);
+    const max = Math.max(...top.map((c) => Math.abs(c.shap_value)), 1e-9);
+    const box = $("shap"); box.textContent = "";
+    top.forEach((c) => {
+      const row = document.createElement("div"); row.className = "shap-row";
+      const lab = document.createElement("div"); lab.className = "lab";
+      lab.textContent = `${pretty(c.feature)} = ${g4(c.value)}`;
+      const track = document.createElement("div"); track.className = "shap-track";
+      const bar = document.createElement("div");
+      bar.className = "shap-bar " + (c.shap_value >= 0 ? "pos" : "neg");
+      bar.style.width = (Math.abs(c.shap_value) / max * 50) + "%";
+      track.appendChild(bar);
+      const num = document.createElement("div"); num.className = "num";
+      num.textContent = (c.shap_value * 100 >= 0 ? "+" : "") + (c.shap_value * 100).toFixed(1);
+      row.append(lab, track, num);
+      box.appendChild(row);
+    });
+    $("shapNote").textContent =
+      "🟥 Red bars pushed the prediction towards malignant; 🟦 blue bars pushed it towards benign. " +
+      `Starting from the average prediction of ${pct(r.base_value)}, the contributions of all 30 features add up to this ` +
+      "patient's probability. Only the 10 largest are shown.";
+
+    const table = document.createElement("table");
+    table.innerHTML = "<thead><tr><th>Feature</th><th>Value</th><th>Effect (percentage points)</th></tr></thead>";
+    const body = document.createElement("tbody");
+    r.contributions.forEach((c) => {
+      const tr = document.createElement("tr");
+      [c.feature, g4(c.value), (c.shap_value * 100).toFixed(2)].forEach((text) => {
+        const td = document.createElement("td"); td.textContent = text; tr.appendChild(td);
+      });
+      body.appendChild(tr);
+    });
+    table.appendChild(body);
+    $("shapTable").textContent = ""; $("shapTable").appendChild(table);
+  }
+})();
+</script>
+</body>
+</html>

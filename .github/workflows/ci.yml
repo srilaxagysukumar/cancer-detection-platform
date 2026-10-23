@@ -18,6 +18,10 @@ jobs:
         with:
           python-version: "3.13"
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"   # runs the browser version's JavaScript in the parity tests
+
       - name: Install dependencies
         run: pip install -r requirements-dev.txt
 

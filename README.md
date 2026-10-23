@@ -4,9 +4,9 @@ An end-to-end machine-learning system that classifies breast masses as **maligna
 
 > **Educational demonstration only.** Built on a public research dataset. It is not a medical device and must not be used for health decisions.
 
-**Live demo:** _add your Streamlit link here_ &nbsp;|&nbsp; **API docs:** _add your API link here_`/docs`
+**Live demo:** _add your GitHub Pages link here_ &nbsp;(runs in your browser, always on, nothing to install)
 
-> The demo is hosted on a free tier and sleeps when idle. The first visit can take about a minute to wake up.
+> The live demo runs the trained model **inside your web browser**, so there is no server to wake up and nothing you type leaves your device. The full-stack version (FastAPI + Streamlit in Docker) is in this repository and can be run with `docker compose up`.
 
 ---
 
@@ -19,6 +19,7 @@ An end-to-end machine-learning system that classifies breast masses as **maligna
 | **Explainability** | SHAP values show which measurements pushed each prediction towards malignant or benign. They add up exactly to the predicted probability. |
 | **Backend** | FastAPI microservice with input validation, out-of-range warnings and auto-generated docs at `/docs`. |
 | **Frontend** | Streamlit dashboard with no ML code in it. It only talks to the API over HTTP. |
+| **Browser demo** | `docs/` holds a static copy of the dashboard. The trained model is exported to `docs/model.json` and `docs/engine.js` repeats its arithmetic (including SHAP) in JavaScript. Hosted free on GitHub Pages. Tests prove it matches the Python model. |
 | **Containers** | One Dockerfile per service, plus `docker-compose.yml` to run both locally. |
 | **Quality checks** | Automated tests (`pytest`) run on every push by GitHub Actions. |
 
@@ -29,6 +30,10 @@ An end-to-end machine-learning system that classifies breast masses as **maligna
               (container 1, ui/)                    (container 2, api/)
 
   DVC pipeline:  ingest ──► preprocess ──► train ──► models/ + metrics/
+                                                  │
+                                                  └─► src/export_web.py ──► docs/model.json
+                                                      (static browser demo: docs/index.html + engine.js,
+                                                       served free by GitHub Pages, no backend)
 ```
 
 ## Results
@@ -72,13 +77,17 @@ streamlit run ui/app.py
 
 Or run both services in Docker: `docker compose up --build`, then open http://localhost:8501.
 
+**Browser demo locally:** `python3 -m http.server --directory docs 8000`, then open http://localhost:8000.
+If you retrain the model, refresh the browser copy with `python -m src.export_web` and commit `docs/model.json`.
+
 ## Project structure
 
 ```
-src/            pipeline stages: ingest.py, preprocess.py, train.py
+src/            pipeline stages: ingest.py, preprocess.py, train.py (+ export_web.py)
 api/            FastAPI backend: main.py, explain.py (SHAP)
 ui/             Streamlit dashboard: app.py
-tests/          pytest checks for the data, the model and the API
+docs/           static browser demo: index.html, engine.js (model + SHAP in JavaScript), model.json
+tests/          pytest checks for the data, the model, the API and the browser version
 dvc.yaml        the pipeline definition
 params.yaml     all tunable settings
 dvc.lock        fingerprints of every pipeline output (reproducibility record)
@@ -92,4 +101,5 @@ docker-compose.yml, render.yaml   local and cloud deployment
 - **The label is flipped so 1 = malignant**, which makes "recall" mean "share of cancers caught" with no ambiguity.
 - **The threshold is chosen on out-of-fold predictions from the training set**, never on the test set.
 - **The API validates strictly**: all 30 named features must be present, non-negative and finite, and values outside the training range produce a warning.
+- **The live demo is static on purpose.** Hosting a Python server 24/7 costs money and free servers sleep, so the model is exported as plain numbers and evaluated in the browser. `tests/test_web_parity.py` runs the real JavaScript under Node and checks it against scikit-learn (probabilities agree to 9 decimal places, SHAP values add up exactly).
 - **The Docker image rebuilds the model with the same scripts DVC runs**, so deployed behaviour always matches the repository.
