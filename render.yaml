@@ -1,0 +1,17 @@
+# Render "Blueprint": tells Render how to deploy both containers from this repository.
+services:
+  - type: web
+    name: cancer-diagnostics-api
+    runtime: docker
+    dockerfilePath: ./Dockerfile.api
+    plan: free
+    healthCheckPath: /health
+
+  - type: web
+    name: cancer-diagnostics-ui
+    runtime: docker
+    dockerfilePath: ./Dockerfile.ui
+    plan: free
+    envVars:
+      - key: API_URL
+        sync: false   # Render asks you for this value when you create the Blueprint

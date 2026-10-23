@@ -1,0 +1,17 @@
+# ---- Container for the Streamlit dashboard ----
+FROM python:3.13-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+WORKDIR /app
+
+COPY requirements-ui.txt .
+RUN pip install --no-cache-dir -r requirements-ui.txt
+
+COPY ui ./ui
+
+EXPOSE 8501
+
+# API_URL tells the dashboard where the backend lives (set in docker-compose.yml or on Render).
+CMD ["sh", "-c", "streamlit run ui/app.py --server.port=${PORT:-8501} --server.address=0.0.0.0 --server.headless=true --browser.gatherUsageStats=false"]

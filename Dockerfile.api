@@ -1,0 +1,27 @@
+# ---- Container for the FastAPI backend ----
+FROM python:3.13-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+WORKDIR /app
+
+# Install the dependencies first. Docker caches this layer, so rebuilding after a
+# code change is fast as long as requirements-api.txt has not changed.
+COPY requirements-api.txt .
+RUN pip install --no-cache-dir -r requirements-api.txt
+
+# Copy in the code and settings.
+COPY params.yaml ./
+COPY src ./src
+COPY api ./api
+
+# Rebuild the data and the model inside the image, using the very same scripts the
+# DVC pipeline runs. The model baked into the image is therefore always the one the
+# code in this repository produces.
+RUN python -m src.ingest && python -m src.preprocess && python -m src.train
+
+EXPOSE 8000
+
+# Container platforms such as Render tell us which port to use via $PORT.
+CMD ["sh", "-c", "uvicorn api.main:app --host 0.0.0.0 --port ${PORT:-8000}"]

@@ -1,0 +1,28 @@
+# Runs the whole platform on your computer with one command:  docker compose up --build
+# Two separate containers that talk to each other over HTTP.
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  ui:
+    build:
+      context: .
+      dockerfile: Dockerfile.ui
+    ports:
+      - "8501:8501"
+    environment:
+      # Inside Docker's private network the backend is reachable by its service name.
+      API_URL: http://api:8000
+    depends_on:
+      api:
+        condition: service_healthy

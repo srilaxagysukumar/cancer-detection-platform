@@ -1,0 +1,12 @@
+.venv
+.git
+.dvc
+data
+models
+metrics
+tests
+__pycache__
+*.pyc
+.pytest_cache
+.DS_Store
+.github
